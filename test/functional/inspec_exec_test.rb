@@ -307,4 +307,50 @@ Test Summary: \e[38;5;41m2 successful\e[0m, 0 failures, 0 skipped\n"
       controls.select { |c| c['results'][0]['status'] == 'passed' }.count.must_be :>, 1
     end
   end
+
+  describe 'with a profile containing control overrides' do
+    let(:out) { inspec('exec ' + File.join(profile_path, 'wrapper-override') + ' --no-create-lockfile --vendor-cache ' +  File.join(profile_path, 'wrapper-override', 'vendor') + ' --reporter json') }
+    let(:json) { JSON.load(out.stdout) }
+    let(:controls) { json['profiles'][0]['controls'] }
+    let(:child_profile) { json['profiles'].select { |p| p['name'] == 'myprofile1' }.first }
+    let(:child_control) { child_profile['controls'].select { |c| c['title'] == 'Profile 1 - Control 2-updated' }.first }
+    let(:override) { controls.select { |c| c['title'] == 'Profile 1 - Control 2-updated' }.first }
+
+    it 'completes the run with failed controls but no exception' do
+      out.stderr.must_be_empty
+      out.exit_status.must_equal 0
+      controls.count.must_equal 2
+
+      # check for json override
+      assert = "  control 'pro1-con2' do\n    impact 0.999\n    title 'Profile 1 - Control 2-updated'\n    desc 'Profile 1 - Control 2 description-updated'\n    tag 'password-updated'\n    ref 'Section 3.5.2.1', url: 'https://example.com'\n    describe file('/etc/passwd') do\n      it { should exist }\n    end\n  end\n"
+      override['code'].must_equal assert
+      override['impact'].must_equal 0.999
+      override['title'].must_equal "Profile 1 - Control 2-updated"
+      tags_assert = {"password"=>nil, "password-updated"=>nil}
+      override['tags'].must_equal tags_assert
+      child_profile['parent_profile'].must_equal 'wrapper-override'
+
+      # check for original code on child profile
+      assert = "control 'pro1-con2' do\n  impact 0.9\n  title 'Profile 1 - Control 2'\n  desc 'Profile 1 - Control 2 description'\n  tag 'password'\n  describe file('/etc/passwdddddddddd') do\n    it { should exist }\n  end\nend\n"
+      child_control['code'].must_equal assert
+    end
+  end
+
+  describe 'when using multiple custom resources with each other' do
+    let(:out) { inspec('exec ' + File.join(examples_path, 'custom-resource') + ' --no-create-lockfile') }
+
+    it 'completes the run with failed controls but no exception' do
+      out.stderr.must_be_empty
+      out.exit_status.must_equal 0
+    end
+  end
+
+  describe 'when using a profile with non-UTF characters and wrong encoding' do
+    let(:out) { inspec('exec ' + File.join(profile_path, 'wrong-char-profile') + ' --no-create-lockfile') }
+
+    it 'completes the run with failed controls but no exception' do
+      out.stderr.must_be_empty
+      out.exit_status.must_equal 0
+    end
+  end
 end
