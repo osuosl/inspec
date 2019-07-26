@@ -140,6 +140,7 @@ require 'resources/passwd'
 require 'resources/pip'
 require 'resources/platform'
 require 'resources/port'
+require "resources/postfix_conf"
 require 'resources/postgres'
 require 'resources/postgres_conf'
 require 'resources/postgres_hba_conf'
