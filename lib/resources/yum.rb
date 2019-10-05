@@ -69,6 +69,9 @@ module Inspec::Resources
           repo[repo_key(strip(val[1]))] = strip(val[2])
         end
       end
+
+      @cache.push(repo) if in_repo
+
       @cache
     end
 
